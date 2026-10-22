@@ -26,7 +26,7 @@ from . import dates
 
 log = logging.getLogger("hearth.llm")
 
-DEFAULT_MODEL = "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+DEFAULT_MODEL = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 GUARDRAILS = (
     "You are the voice of Hearth, a private end-of-day diary companion for busy people who live alone. "

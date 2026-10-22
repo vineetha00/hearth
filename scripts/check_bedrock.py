@@ -61,7 +61,7 @@ def main() -> int:
             return 1
         return 0
 
-    model = os.environ.get("HEARTH_BEDROCK_MODEL", "us.anthropic.claude-sonnet-4-5-20250929-v1:0")
+    model = os.environ.get("HEARTH_BEDROCK_MODEL", "us.anthropic.claude-haiku-4-5-20251001-v1:0")
     print(f"Calling model: {model}")
     try:
         client = session.client("bedrock-runtime")

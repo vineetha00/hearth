@@ -13,7 +13,7 @@ Use a voice you like: tap **Talk** and say the lines, or click the suggestion ch
 | 1:20 | Say: *"I just called my sister."* Row disappears; "You have N left" | "I never said the exact wording. It matched by meaning and crossed it off." |
 | 1:35 | Say: *"How have I been this week?"* | "And it notices patterns across days: deadlines and school keep coming up, most of the week sounded heavy. Observations, never advice. Hearth isn't therapy and says so." |
 | 1:55 | Zoom on **What Alexa+ called**: scroll through `tools/call log_journal_entry`, `get_commitments`, `prioritize_today` | "Under the hood, every reply is a real tool call to my MCP server over Streamable HTTP, protocol 2026-07-28. Six tools. Alexa+ discovers them from their descriptions and picks one from what I say." |
-| 2:15 | Cut to terminal showing `/health` → `"llm_engine": "bedrock"` and the `pytest` run passing | "Amazon Bedrock pulls the commitments and due dates out of natural speech and writes the acknowledgements. There's an offline fallback, and 14 tests including one that drives the live server with an MCP client." |
+| 2:15 | Cut to terminal showing `/health` → `"llm_engine": "bedrock"` and the `pytest` run passing | "Amazon Bedrock pulls the commitments and due dates out of natural speech and writes the acknowledgements. There's an offline fallback, and 18 tests including one that drives the live server with an MCP client." |
 | 2:30 | Back to the lamp / app | "I built this because I'm this person: far from family, drowning in deadlines, and forgetting to call home. Hearth is the end-of-day check-in I wanted. Thanks for watching." |
 
 **Retake tips:** if the language model writes a clunky acknowledgement, retake that line; the offline fallback is plainer than Bedrock.

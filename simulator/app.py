@@ -53,7 +53,7 @@ def _today_label() -> str:
     return dates.today().strftime("%A, %B %-d")
 STATIC = Path(__file__).parent / "static"
 MCP_URL = os.environ.get("HEARTH_MCP_URL", "http://127.0.0.1:8765/mcp")
-MODEL_ID = os.environ.get("HEARTH_ROUTER_MODEL", os.environ.get("HEARTH_BEDROCK_MODEL", "us.anthropic.claude-sonnet-4-5-20250929-v1:0"))
+MODEL_ID = os.environ.get("HEARTH_ROUTER_MODEL", os.environ.get("HEARTH_BEDROCK_MODEL", "us.anthropic.claude-haiku-4-5-20251001-v1:0"))
 
 _bedrock = router.make_bedrock_client()
 

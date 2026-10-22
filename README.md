@@ -64,9 +64,11 @@ python -m hearth.server                  # http://127.0.0.1:8765/mcp   (health: 
 python -m simulator.app                  # http://127.0.0.1:8080
 ```
 
+Or run both with one command: `./scripts/start.sh` (your own diary, kept in `~/.hearth/hearth.db`) or `./scripts/start.sh demo` (the seeded demo data).
+
 Open http://127.0.0.1:8080. Use **Talk** (Chrome/Edge microphone), type, tap a suggested line, or press **Play a demo evening**.
 
-**Bedrock:** export AWS credentials and `HEARTH_BEDROCK_MODEL` (see `.env.example`). The server's `/health` shows
+**Bedrock:** export AWS credentials, `AWS_REGION` and `HEARTH_BEDROCK_MODEL` (default: Claude Haiku 4.5 via a `us.` inference profile; see `.env.example`). `python scripts/check_bedrock.py` verifies your setup first. Bedrock does the extraction, acknowledgements, reflections and the simulated Alexa+ tool routing; dates are resolved in code, not by the model. The server's `/health` shows
 `"llm_engine": "bedrock"` when it's live. With no credentials everything still runs on the offline fallback, and the
 trace panel labels which engine produced each reply.
 
@@ -99,7 +101,7 @@ Bind with `HEARTH_HOST=0.0.0.0` (the default localhost binding rejects other `Ho
 ```
 hearth/       MCP server, service logic, Bedrock + fallback language layer, SQLite store
 simulator/    Alexa+ simulator (Starlette backend, single-file UI)
-scripts/      seed_demo.py
+scripts/      seed_demo.py, check_bedrock.py (verify AWS access), start.sh (run everything)
 tests/        unit + end-to-end tests
 ```
 
