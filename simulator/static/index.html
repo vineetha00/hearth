@@ -1,0 +1,402 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hearth: Alexa+ simulator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Familjen+Grotesk:wght@500;700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+  --sky: #dce2f1;
+  --paper: #eef1f9;
+  --ink: #1b2238;
+  --muted: #566080;
+  --line: #b9c2dc;
+  --amber: #e8a33d;
+  --amber-soft: #fbe3b0;
+  --coral: #c8503f;
+  --night: #1f2745;
+  --night-ink: #dde3f5;
+  --night-muted: #98a3c7;
+  --head: "Familjen Grotesk", "Avenir Next", system-ui, sans-serif;
+  --body: "Figtree", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html { background: var(--sky); }
+body {
+  margin: 0; min-height: 100vh; color: var(--ink); background: var(--sky);
+  font: 400 1.0625rem/1.55 var(--body);
+}
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+
+.top {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem 1.5rem;
+  padding: 1.1rem clamp(1rem, 4vw, 3rem); border-bottom: 1px solid var(--line);
+}
+.brand { font: 700 1.5rem/1 var(--head); letter-spacing: -.01em; margin: 0; }
+.brand small { font: 500 .95rem var(--body); color: var(--muted); margin-left: .6rem; letter-spacing: 0; }
+.badges { display: flex; flex-wrap: wrap; gap: .4rem; margin-left: auto; font-size: .85rem; color: var(--muted); }
+.badge { padding: .2rem .65rem; border: 1px solid var(--line); border-radius: 999px; background: var(--paper); }
+.badge.ok::before { content: ""; display: inline-block; width: .5rem; height: .5rem; border-radius: 50%; background: #3f8f5a; margin-right: .4rem; }
+.badge.bad { border-color: var(--coral); color: var(--coral); }
+
+.stage {
+  display: grid; gap: clamp(1.5rem, 4vw, 3.5rem);
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  padding: clamp(1.25rem, 4vw, 3rem); max-width: 1240px; margin: 0 auto;
+}
+@media (max-width: 900px) { .stage { grid-template-columns: 1fr; } }
+
+/* ---------- conversation ---------- */
+.lamp-row { display: flex; align-items: center; gap: 1.25rem; margin-bottom: 1.25rem; }
+.lamp {
+  position: relative; flex: none; width: 4.5rem; height: 4.5rem; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffe3a3 0%, var(--amber) 55%, #a8620f 100%);
+  opacity: .9; filter: saturate(.85) brightness(.82);
+  box-shadow: 0 0 1.6rem .1rem rgba(232,163,61,.22);
+  transition: opacity .4s, filter .4s, box-shadow .4s;
+}
+.lamp::after {
+  content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--amber); opacity: 0;
+}
+.lamp[data-state="listening"], .lamp[data-state="speaking"] {
+  opacity: 1; filter: none; box-shadow: 0 0 0 .5rem rgba(232,163,61,.18), 0 0 3.5rem 1rem rgba(232,163,61,.55);
+}
+.lamp[data-state="thinking"] { opacity: .85; filter: none; box-shadow: 0 0 2rem .25rem rgba(232,163,61,.35); }
+.lamp[data-state="listening"]::after, .lamp[data-state="speaking"]::after { animation: ring 1.7s ease-out infinite; }
+@keyframes ring { from { transform: scale(1); opacity: .8; } to { transform: scale(1.9); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .lamp::after { animation: none !important; } .lamp { transition: none; } }
+
+h1 { font: 700 clamp(2rem, 4.6vw, 3.1rem)/1.05 var(--head); letter-spacing: -.02em; margin: 0; }
+.lede { margin: .35rem 0 0; color: var(--muted); max-width: 34rem; }
+
+.thread {
+  list-style: none; margin: 0 0 1rem; padding: 0 .5rem 0 0; min-height: 11rem; max-height: 52vh; overflow-y: auto;
+  scrollbar-width: thin; scrollbar-color: #9aa5c6 transparent;
+}
+.thread::-webkit-scrollbar { width: 8px; }
+.thread::-webkit-scrollbar-track { background: transparent; }
+.thread::-webkit-scrollbar-thumb { background: #9aa5c6; border-radius: 8px; }
+.trace ol { scrollbar-width: thin; scrollbar-color: #4a5580 transparent; }
+.trace ol::-webkit-scrollbar { width: 8px; }
+.trace ol::-webkit-scrollbar-track { background: transparent; }
+.trace ol::-webkit-scrollbar-thumb { background: #4a5580; border-radius: 8px; }
+.thread li { margin: 0 0 1rem; max-width: 40rem; white-space: pre-wrap; }
+.thread .you { margin-left: auto; text-align: right; color: var(--muted); max-width: 32rem; }
+.thread .alexa { padding: .6rem 0 .6rem 1rem; border-left: 3px solid var(--amber); background: linear-gradient(90deg, var(--amber-soft), transparent 80%); }
+.thread .alexa b { display: block; font: 600 .85rem var(--body); color: var(--muted); margin-bottom: .1rem; }
+.thread .error { color: var(--coral); border-left: 3px solid var(--coral); padding-left: 1rem; }
+.thread .empty { color: var(--muted); }
+
+.say { display: flex; gap: .5rem; align-items: stretch; }
+.say input {
+  flex: 1; min-width: 0; padding: .8rem 1rem; background: var(--paper); border: 1px solid var(--line); border-radius: 4px 14px 4px 14px;
+}
+.say input::placeholder { color: #7b85a3; }
+.btn { padding: .7rem 1.1rem; border: 1px solid var(--ink); background: var(--ink); color: var(--paper); border-radius: 4px 14px 4px 14px; cursor: pointer; font-weight: 600; }
+.btn:hover { background: #2b3556; }
+.btn[disabled] { opacity: .5; cursor: progress; }
+.btn.ghost { background: transparent; color: var(--ink); border-color: var(--line); font-weight: 500; }
+.btn.ghost:hover { background: var(--paper); }
+.mic[aria-pressed="true"] { background: var(--amber); border-color: var(--amber); color: var(--ink); }
+
+.try { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: .5rem; align-items: center; }
+.try .hint { color: var(--muted); font-size: .92rem; margin-right: .25rem; }
+.chip { padding: .35rem .8rem; font-size: .92rem; border: 1px solid var(--line); border-radius: 999px; background: transparent; cursor: pointer; }
+.chip:hover { background: var(--paper); }
+.opts { margin-top: 1rem; font-size: .92rem; color: var(--muted); display: flex; gap: 1.25rem; flex-wrap: wrap; align-items: center; }
+.opts label { display: inline-flex; align-items: center; gap: .4rem; cursor: pointer; }
+
+/* ---------- list + trace ---------- */
+.side h2 { font: 700 1.35rem/1.15 var(--head); margin: 0 0 .15rem; letter-spacing: -.01em; }
+.side .sub { margin: 0 0 1rem; color: var(--muted); font-size: .95rem; }
+.group { margin: 0 0 1.15rem; }
+.group h3 { font: 600 .95rem var(--body); margin: 0 0 .25rem; padding-bottom: .25rem; border-bottom: 1px solid var(--line); }
+.group.overdue h3 { color: var(--coral); border-color: var(--coral); }
+.group.today h3 { border-color: var(--amber); border-bottom-width: 2px; }
+.group ul { list-style: none; margin: 0; padding: 0; }
+.group li { display: flex; justify-content: space-between; gap: 1rem; padding: .45rem 0; border-bottom: 1px dashed var(--line); }
+.group li:last-child { border-bottom: 0; }
+.group .what small { display: block; color: var(--muted); font-size: .85rem; }
+.group .when { flex: none; color: var(--muted); font-size: .92rem; text-align: right; }
+.group.overdue .when { color: var(--coral); font-weight: 600; }
+.empty-list { color: var(--muted); padding: .5rem 0 1rem; }
+
+.trace { margin-top: 1.5rem; background: var(--night); color: var(--night-ink); border-radius: 18px 4px 18px 4px; padding: 1rem 1.15rem; }
+.trace summary { cursor: pointer; font: 600 1rem var(--head); }
+.trace .note { color: var(--night-muted); font-size: .88rem; margin: .4rem 0 .8rem; }
+.trace ol { list-style: none; margin: 0; padding: 0; max-height: 22rem; overflow: auto; }
+.trace li { padding: .6rem 0; border-top: 1px solid #333c63; }
+.trace .call { display: flex; gap: .6rem; flex-wrap: wrap; align-items: baseline; }
+.trace .name { font: 600 .95rem ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: #ffd98a; }
+.trace .ms { color: var(--night-muted); font-size: .8rem; }
+.trace pre { margin: .3rem 0 0; font: .8rem/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--night-ink); white-space: pre-wrap; word-break: break-word; }
+.trace .meta { margin-top: .35rem; font-size: .8rem; color: var(--night-muted); }
+</style>
+</head>
+<body>
+<header class="top">
+  <p class="brand">Hearth<small>Alexa+ simulator</small></p>
+  <div class="badges" id="badges" aria-live="polite"><span class="badge">Connecting to Hearth…</span></div>
+</header>
+
+<main class="stage">
+  <section aria-labelledby="hello">
+    <div class="lamp-row">
+      <div class="lamp" id="lamp" data-state="idle" role="img" aria-label="Hearth lamp"></div>
+      <div>
+        <h1 id="hello">How was today?</h1>
+        <p class="lede">Talk it out like you would with a friend. I'll remember what you say you'll do.</p>
+      </div>
+    </div>
+
+    <ol class="thread" id="thread" aria-live="polite" aria-label="Conversation">
+      <li class="empty" id="empty">Nothing yet. Say what's on your mind, or tap one of the lines below.</li>
+    </ol>
+
+    <form class="say" id="say" autocomplete="off">
+      <label for="utterance" hidden>What would you like to say to Alexa?</label>
+      <input id="utterance" name="utterance" placeholder="Alexa, ask Hearth…  or just start talking" enterkeyhint="send">
+      <button type="button" class="btn ghost mic" id="mic" aria-pressed="false" title="Tap to talk, tap again to send">Talk</button>
+      <button type="submit" class="btn" id="send">Send</button>
+    </form>
+
+    <div class="try" id="try">
+      <span class="hint">Try:</span>
+    </div>
+    <div class="opts">
+      <label><input type="checkbox" id="aloud" checked> Read replies aloud</label>
+      <button type="button" class="btn ghost" id="demo">Play a demo evening</button>
+      <button type="button" class="btn ghost" id="clear">Clear screen</button>
+    </div>
+  </section>
+
+  <aside class="side" aria-labelledby="listh">
+    <h2 id="listh">What you said you'd do</h2>
+    <p class="sub" id="today"></p>
+    <div id="list"><p class="empty-list">Nothing yet. Tell me about your day and I'll keep track.</p></div>
+
+    <details class="trace" open>
+      <summary>What Alexa+ called</summary>
+      <p class="note">Every reply above is a real MCP tool call to the Hearth server over Streamable HTTP.</p>
+      <ol id="trace"></ol>
+    </details>
+  </aside>
+</main>
+
+<script>
+const $ = (s) => document.querySelector(s);
+const thread = $('#thread'), form = $('#say'), input = $('#utterance'), lamp = $('#lamp');
+const micBtn = $('#mic'), sendBtn = $('#send'), demoBtn = $('#demo');
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let busy = false;
+
+const SUGGESTIONS = [
+  "Long day. Back to back meetings and I skipped lunch. I'm completely drained.",
+  "I told my sister I'd call her back tomorrow, and I need to submit the lab report by Friday.",
+  "What's due tomorrow?",
+  "What's the most important thing right now?",
+  "I just called my sister.",
+  "How have I been this week?",
+];
+const DEMO = [
+  "Long day. Back to back meetings, I skipped lunch, and I'm completely drained.",
+  "I told my sister I'd call her back tomorrow, and I need to submit the lab report by Friday. Honestly I miss being home.",
+  "I also have to book a dentist appointment next week.",
+  "What's due tomorrow?",
+  "What's the most important thing right now?",
+  "I just called my sister.",
+  "How have I been this week?",
+];
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const setLamp = (s) => { lamp.dataset.state = s; };
+
+function addLine(kind, text) {
+  const empty = $('#empty'); if (empty) empty.remove();
+  const li = document.createElement('li');
+  li.className = kind;
+  if (kind === 'alexa') {
+    const who = document.createElement('b'); who.textContent = 'Alexa'; li.append(who);
+  }
+  li.append(document.createTextNode(text));
+  thread.append(li);
+  thread.scrollTo({ top: thread.scrollHeight, behavior: reduce ? 'auto' : 'smooth' });
+}
+
+/* ---------- speech out ---------- */
+function speak(text) {
+  // Chrome silently cuts off long utterances, so speak one sentence at a time.
+  return new Promise((resolve) => {
+    if (!$('#aloud').checked || !('speechSynthesis' in window)) { setLamp('speaking'); setTimeout(resolve, 900); return; }
+    speechSynthesis.cancel();
+    const parts = (text.match(/[^.!?;]+[.!?;]*\s*/g) || [text]).map((x) => x.trim()).filter(Boolean);
+    setLamp('speaking');
+    let i = 0, done = false;
+    const finish = () => { if (!done) { done = true; resolve(); } };
+    const next = () => {
+      if (i >= parts.length) return finish();
+      const u = new SpeechSynthesisUtterance(parts[i++]);
+      u.lang = 'en-US'; u.rate = 1.0;
+      u.onend = next; u.onerror = finish;
+      speechSynthesis.speak(u);
+    };
+    next();
+  });
+}
+
+/* ---------- speech in ---------- */
+// Chrome dictation comes back lowercase and unpunctuated; tidy it so the routing sees a normal sentence.
+function tidy(t) {
+  t = t.trim().replace(/\s+/g, ' ');
+  t = t.charAt(0).toUpperCase() + t.slice(1);
+  return /[.?!]$/.test(t) ? t : t + (/^(what|when|how|which|who|where|do|did|is|are|can)\b/i.test(t) ? '?' : '.');
+}
+const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+let rec = null, listening = false;
+function setMic(on) {
+  listening = on;
+  micBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+  micBtn.textContent = on ? 'Done' : 'Talk';
+}
+// discard = true throws away whatever was heard. Used when sending, so the mic can never
+// refill the box with old words or hear Alexa's reply through the speakers.
+function stopListening(discard) {
+  if (!rec) return;
+  const r = rec;
+  r._discard = !!discard;
+  try { discard ? r.abort() : r.stop(); } catch (_) { /* already stopped */ }
+  if (discard) { rec = null; setMic(false); }
+}
+function startListening() {
+  const r = new SR();   // a fresh session per tap, so old results can't come back
+  r.lang = 'en-US'; r.interimResults = true; r.continuous = true; r._discard = false;
+  r.onresult = (e) => {
+    if (r._discard || r !== rec) return;
+    let t = ''; for (let i = 0; i < e.results.length; i++) t += e.results[i][0].transcript + ' ';
+    input.value = t.trim();
+  };
+  r.onend = () => {
+    if (r !== rec) return;            // an older session ending late
+    rec = null; setMic(false);
+    if (!busy) setLamp('idle');
+    if (!r._discard && input.value.trim()) send(tidy(input.value));
+  };
+  r.onerror = (e) => {
+    if (r !== rec) return;
+    rec = null; setMic(false); if (!busy) setLamp('idle');
+    if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+      addLine('error', 'The microphone is blocked. Allow microphone access for this page in Chrome, then tap Talk again.');
+    }
+  };
+  rec = r; input.value = ''; setMic(true); setLamp('listening');
+  try { r.start(); } catch (_) { rec = null; setMic(false); setLamp('idle'); }
+}
+if (!SR) { micBtn.hidden = true; } else {
+  micBtn.addEventListener('click', () => {
+    if (busy) return;
+    if (listening) { stopListening(false); return; }
+    if ('speechSynthesis' in window) speechSynthesis.cancel();
+    startListening();
+  });
+}
+
+/* ---------- list + trace ---------- */
+const GROUPS = [
+  ['overdue', 'Overdue'], ['today', 'Today'], ['tomorrow', 'Tomorrow'],
+  ['week', 'Later this week'], ['later', 'Later'], ['none', 'No date yet'],
+];
+function renderList(items, todayLabel) {
+  if (todayLabel) $('#today').textContent = todayLabel;
+  const box = $('#list'); box.textContent = '';
+  if (!items || !items.length) {
+    const p = document.createElement('p'); p.className = 'empty-list';
+    p.textContent = "Nothing yet. Tell me about your day and I'll keep track."; box.append(p); return;
+  }
+  for (const [key, label] of GROUPS) {
+    const rows = items.filter((c) => c.group === key); if (!rows.length) continue;
+    const sec = document.createElement('section'); sec.className = 'group ' + key;
+    const h = document.createElement('h3'); h.textContent = label; sec.append(h);
+    const ul = document.createElement('ul');
+    for (const c of rows) {
+      const li = document.createElement('li');
+      const what = document.createElement('span'); what.className = 'what'; what.textContent = c.text;
+      if (c.person) { const s = document.createElement('small'); s.textContent = 'You promised ' + (/^(mom|dad|sister|brother|friend|roommate|aunt|uncle|cousin|grandma|grandpa|mother|father)$/i.test(c.person) ? 'your ' : '') + c.person; what.append(s); }
+      const when = document.createElement('span'); when.className = 'when'; when.textContent = c.due || '';
+      li.append(what, when); ul.append(li);
+    }
+    sec.append(ul); box.append(sec);
+  }
+}
+function renderTrace(data) {
+  const ol = $('#trace');
+  for (const call of data.trace) {
+    const li = document.createElement('li');
+    const head = document.createElement('div'); head.className = 'call';
+    const k = document.createElement('span'); k.className = 'ms'; k.textContent = 'tools/call';
+    const n = document.createElement('span'); n.className = 'name'; n.textContent = call.tool;
+    const ms = document.createElement('span'); ms.className = 'ms'; ms.textContent = call.ms + ' ms';
+    head.append(k, n, ms);
+    const pre = document.createElement('pre'); pre.textContent = JSON.stringify(call.arguments);
+    const meta = document.createElement('div'); meta.className = 'meta';
+    const eng = call.result && call.result.engine ? ' · language model: ' + (call.result.engine === 'bedrock' ? 'Amazon Bedrock' : 'offline fallback') : '';
+    meta.textContent = 'routed by ' + (data.router === 'bedrock' ? 'Bedrock (simulated Alexa+ orchestrator)' : 'simulated rules') + eng;
+    li.append(head, pre, meta); ol.prepend(li);
+  }
+}
+function setBadges(state) {
+  const b = $('#badges'); b.textContent = '';
+  const mk = (t, cls) => { const s = document.createElement('span'); s.className = 'badge ' + (cls || ''); s.textContent = t; b.append(s); };
+  if (state.error) { mk('Hearth MCP server not reachable', 'bad'); return; }
+  mk('MCP connected, protocol ' + state.protocol, 'ok');
+  mk(state.tools.length + ' tools');
+  mk('Routing: ' + (state.router === 'bedrock' ? 'Amazon Bedrock' : 'simulated rules'));
+}
+
+/* ---------- send ---------- */
+async function send(text) {
+  text = (text || '').trim();
+  if (busy || !text) return;
+  busy = true; sendBtn.disabled = true; demoBtn.disabled = true;
+  stopListening(true);   // mic off and cleared before Alexa speaks
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  addLine('you', text); input.value = ''; setLamp('thinking');
+  try {
+    const res = await fetch('/api/say', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ utterance: text }) });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || 'Something went wrong.');
+    addLine('alexa', data.speech);
+    renderList(data.commitments, data.today); renderTrace(data);
+    await speak(data.speech);
+  } catch (err) {
+    addLine('error', err.message);
+  } finally {
+    busy = false; sendBtn.disabled = false; demoBtn.disabled = false; setLamp('idle'); input.focus();
+  }
+}
+form.addEventListener('submit', (e) => { e.preventDefault(); send(input.value); });
+
+for (const s of SUGGESTIONS) {
+  const b = document.createElement('button'); b.type = 'button'; b.className = 'chip';
+  b.textContent = s.length > 46 ? s.slice(0, 44).trim() + '…' : s; b.title = s;
+  b.addEventListener('click', () => send(s)); $('#try').append(b);
+}
+$('#clear').addEventListener('click', () => {
+  if (busy) return;
+  stopListening(true);
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
+  thread.textContent = ''; input.value = ''; setLamp('idle');
+});
+demoBtn.addEventListener('click', async () => {
+  for (const line of DEMO) { await send(line); await sleep(reduce ? 400 : 1100); }
+});
+
+fetch('/api/state').then((r) => r.json()).then((s) => {
+  setBadges(s); if (!s.error) renderList(s.commitments, s.today);
+}).catch(() => setBadges({ error: true }));
+</script>
+</body>
+</html>
