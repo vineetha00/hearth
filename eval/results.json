@@ -1,0 +1,716 @@
+{
+  "dataset": {
+    "corpus": 60,
+    "queries": 50,
+    "top_k": 5
+  },
+  "retrieval": {
+    "lexical": {
+      "overall": {
+        "recall@1": 0.6,
+        "recall@5": 0.8,
+        "mrr": 0.704,
+        "n": 50
+      },
+      "slices": {
+        "direct": {
+          "recall@1": 0.9,
+          "recall@5": 0.9,
+          "mrr": 0.912,
+          "n": 10
+        },
+        "distractor": {
+          "recall@1": 0.857,
+          "recall@5": 1.0,
+          "mrr": 0.917,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@1": 0.333,
+          "recall@5": 0.556,
+          "mrr": 0.438,
+          "n": 18
+        },
+        "temporal": {
+          "recall@1": 0.375,
+          "recall@5": 0.875,
+          "mrr": 0.667,
+          "n": 8
+        }
+      }
+    },
+    "semantic": {
+      "overall": {
+        "recall@1": 0.91,
+        "recall@5": 0.97,
+        "mrr": 0.958,
+        "n": 50
+      },
+      "slices": {
+        "direct": {
+          "recall@1": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0,
+          "n": 10
+        },
+        "distractor": {
+          "recall@1": 1.0,
+          "recall@5": 1.0,
+          "mrr": 1.0,
+          "n": 14
+        },
+        "paraphrase": {
+          "recall@1": 0.944,
+          "recall@5": 1.0,
+          "mrr": 0.963,
+          "n": 18
+        },
+        "temporal": {
+          "recall@1": 0.562,
+          "recall@5": 0.812,
+          "mrr": 0.818,
+          "n": 8
+        }
+      }
+    }
+  },
+  "rag_faithfulness": {
+    "judge_model": "llama3.1:latest",
+    "n_queries": 25,
+    "n_scored": 24,
+    "faithfulness": 0.924,
+    "transcripts": [
+      {
+        "query_id": "q1",
+        "slice": "paraphrase",
+        "question": "I rang my mum earlier",
+        "retrieved": [
+          "Call Mom back",
+          "I miss home. Mom called twice while I was in the lab and I couldn't pick up. I feel bad about it.",
+          "Call Grandma on Sunday",
+          "Nice evening for once. Walked home the long way, called my sister, felt almost normal.",
+          "Long call with Grandma. She told the story about the orchard again. I didn't mind."
+        ],
+        "answer": "You couldn't pick up because you were in the lab. You feel bad about it.",
+        "claims": [
+          {
+            "claim": "You couldn't pick up because you were in the lab.",
+            "supported": true
+          },
+          {
+            "claim": "You feel bad about it.",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q3",
+        "slice": "paraphrase",
+        "question": "turn in the lab writeup",
+        "retrieved": [
+          "Submit the lab report by Friday",
+          "Couldn't sleep. Kept thinking about the lab report and whether my data section is wrong.",
+          "Lab ran late again. Professor Alvarez hinted extensions are possible if we ask early.",
+          "I miss home. Mom called twice while I was in the lab and I couldn't pick up. I feel bad about it.",
+          "Drop off the dry cleaning"
+        ],
+        "answer": "You already submitted the lab report by Friday, but you still need to turn in the lab writeup.",
+        "claims": [
+          {
+            "claim": "You already submitted the lab report by Friday",
+            "supported": false
+          },
+          {
+            "claim": "you still need to turn in the lab writeup",
+            "supported": true
+          }
+        ],
+        "faithfulness": 0.5
+      },
+      {
+        "query_id": "q5",
+        "slice": "paraphrase",
+        "question": "get hold of the landlord about the drip",
+        "retrieved": [
+          "Call the landlord about the leaking tap",
+          "The tap in the kitchen is still dripping. The sound drove me crazy all night.",
+          "Landlord emailed about renewing the lease. Rent is going up again. This city is impossible.",
+          "Clean the bathroom this weekend",
+          "Drop off the dry cleaning"
+        ],
+        "answer": "You need to call the landlord about the leaking tap, and they've already emailed you about renewing the lease. The tap in the kitchen is still dripping, remember?",
+        "claims": [
+          {
+            "claim": "You need to call the landlord about the leaking tap",
+            "supported": true
+          },
+          {
+            "claim": "They've already emailed you about renewing the lease",
+            "supported": true
+          },
+          {
+            "claim": "The tap in the kitchen is still dripping",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q7",
+        "slice": "paraphrase",
+        "question": "pick up food for the week",
+        "retrieved": [
+          "Buy groceries for the week",
+          "Pack for the Denver flight on Thursday",
+          "Work was brutal today. Three back-to-back meetings and my manager moved the standup deck deadline to Monday. I barely had time to eat.",
+          "Priya wants to do a cabin weekend next month. I said I'd check my schedule.",
+          "I miss home. Mom called twice while I was in the lab and I couldn't pick up. I feel bad about it."
+        ],
+        "answer": "Buy groceries for the week.",
+        "claims": [
+          {
+            "claim": "Buy groceries",
+            "supported": true
+          },
+          {
+            "claim": "for the week",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q9",
+        "slice": "paraphrase",
+        "question": "grab my meds from the drugstore",
+        "retrieved": [
+          "Pick up my prescription from the pharmacy",
+          "Call Mom back",
+          "Book a dentist appointment",
+          "Drop off the dry cleaning",
+          "Clean the bathroom this weekend"
+        ],
+        "answer": "Pick up your prescription from the pharmacy.",
+        "claims": [
+          {
+            "claim": "Pick up your prescription",
+            "supported": true
+          },
+          {
+            "claim": "Your prescription is located at the pharmacy",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q11",
+        "slice": "paraphrase",
+        "question": "wrap up the presentation for the team meeting",
+        "retrieved": [
+          "Finish the slide deck for Monday's standup",
+          "Write thank-you notes from the interview",
+          "The interview went okay, I think. They asked about my capstone project and I rambled.",
+          "Work was brutal today. Three back-to-back meetings and my manager moved the standup deck deadline to Monday. I barely had time to eat.",
+          "Submit the lab report by Friday"
+        ],
+        "answer": "You still need to finish the slide deck for Monday's standup, remember? You mentioned it was moved to Monday and you barely had time to eat today.",
+        "claims": [
+          {
+            "claim": "You still need to finish the slide deck for Monday's standup",
+            "supported": true
+          },
+          {
+            "claim": "You mentioned it was moved to Monday",
+            "supported": true
+          },
+          {
+            "claim": "You barely had time to eat today",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q13",
+        "slice": "paraphrase",
+        "question": "swing by the barber",
+        "retrieved": [
+          "Schedule a haircut",
+          "Long call with Grandma. She told the story about the orchard again. I didn't mind.",
+          "Pay the electricity bill",
+          "Call Grandma on Sunday",
+          "Sign up for the gym near work"
+        ],
+        "answer": "You scheduled a haircut, remember?",
+        "claims": [
+          {
+            "claim": "You scheduled a haircut",
+            "supported": true
+          },
+          {
+            "claim": "You are supposed to go to the barber",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q15",
+        "slice": "paraphrase",
+        "question": "sort out the strange transaction with my bank",
+        "retrieved": [
+          "Call the bank about the unrecognized charge",
+          "There's a charge on my bank statement I don't recognize. Forty-two dollars at a store I've never heard of.",
+          "My flight to Denver on Thursday got moved to 6am. Who does that.",
+          "My bike has a flat so I took the metro, and of course my card was empty.",
+          "Take the recycling out"
+        ],
+        "answer": "You need to call the bank about an unrecognized charge on your statement. It's for forty-two dollars at a store you've never heard of.",
+        "claims": [
+          {
+            "claim": "You need to call the bank",
+            "supported": true
+          },
+          {
+            "claim": "There is an unrecognized charge on your statement",
+            "supported": true
+          },
+          {
+            "claim": "The charge is for forty-two dollars",
+            "supported": true
+          },
+          {
+            "claim": "It was made at a store you have never heard of",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q17",
+        "slice": "paraphrase",
+        "question": "ditch the video service I never watch",
+        "retrieved": [
+          "Cancel the streaming subscription I never use",
+          "Payday, finally. Paid rent, then stared at the electricity bill and closed the laptop.",
+          "Take the recycling out",
+          "Drop off the dry cleaning",
+          "Call Mom back"
+        ],
+        "answer": "You wanted to cancel the streaming subscription you never use.",
+        "claims": [
+          {
+            "claim": "You wanted to cancel the streaming subscription",
+            "supported": true
+          },
+          {
+            "claim": "You never use the streaming subscription",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q19",
+        "slice": "temporal",
+        "question": "what did I promise to do this week",
+        "retrieved": [
+          "Skipped the gym again. Third week of saying I'll start.",
+          "Priya wants to do a cabin weekend next month. I said I'd check my schedule.",
+          "Work was brutal today. Three back-to-back meetings and my manager moved the standup deck deadline to Monday. I barely had time to eat.",
+          "Clean the bathroom this weekend",
+          "Buy groceries for the week"
+        ],
+        "answer": "Check your schedule for Priya's cabin weekend next month.",
+        "claims": [],
+        "faithfulness": null
+      },
+      {
+        "query_id": "q20",
+        "slice": "temporal",
+        "question": "what's happening this weekend",
+        "retrieved": [
+          "Clean the bathroom this weekend",
+          "My flight to Denver on Thursday got moved to 6am. Who does that.",
+          "Finish the slide deck for Monday's standup",
+          "Priya wants to do a cabin weekend next month. I said I'd check my schedule.",
+          "Pack for the Denver flight on Thursday"
+        ],
+        "answer": "You're planning to clean the bathroom this weekend.",
+        "claims": [
+          {
+            "claim": "You are planning something for this weekend.",
+            "supported": true
+          },
+          {
+            "claim": "The activity you have planned is cleaning the bathroom.",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q21",
+        "slice": "temporal",
+        "question": "what do I need to do before the end of the month",
+        "retrieved": [
+          "Register for spring classes before the end of the month",
+          "Renew the apartment lease by the end of the month",
+          "Priya wants to do a cabin weekend next month. I said I'd check my schedule.",
+          "Book a dentist appointment",
+          "Skipped the gym again. Third week of saying I'll start."
+        ],
+        "answer": "You need to register for spring classes and renew your apartment lease by the end of the month.",
+        "claims": [
+          {
+            "claim": "You need to register for spring classes",
+            "supported": true
+          },
+          {
+            "claim": "You need to renew your apartment lease",
+            "supported": false
+          }
+        ],
+        "faithfulness": 0.5
+      },
+      {
+        "query_id": "q22",
+        "slice": "temporal",
+        "question": "what's due on friday",
+        "retrieved": [
+          "Clean the bathroom this weekend",
+          "Submit the lab report by Friday",
+          "Priya wants to do a cabin weekend next month. I said I'd check my schedule.",
+          "Study for the statistics midterm this week",
+          "Work was brutal today. Three back-to-back meetings and my manager moved the standup deck deadline to Monday. I barely had time to eat."
+        ],
+        "answer": "The lab report is due by Friday.",
+        "claims": [
+          {
+            "claim": "The lab report is due.",
+            "supported": true
+          },
+          {
+            "claim": "It is due by Friday.",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q24",
+        "slice": "temporal",
+        "question": "anything happening on thursday",
+        "retrieved": [
+          "Pack for the Denver flight on Thursday",
+          "My flight to Denver on Thursday got moved to 6am. Who does that.",
+          "Submit the lab report by Friday",
+          "Study for the statistics midterm this week",
+          "Priya wants to do a cabin weekend next month. I said I'd check my schedule."
+        ],
+        "answer": "You have a flight to Denver on Thursday, and it got moved to 6am. You also need to pack for that flight.",
+        "claims": [
+          {
+            "claim": "You have a flight to Denver on Thursday.",
+            "supported": true
+          },
+          {
+            "claim": "Your flight to Denver was moved to 6am.",
+            "supported": true
+          },
+          {
+            "claim": "You need to pack for the flight.",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q26",
+        "slice": "temporal",
+        "question": "which deadlines are coming up this week",
+        "retrieved": [
+          "Study for the statistics midterm this week",
+          "Schedule a haircut",
+          "Priya wants to do a cabin weekend next month. I said I'd check my schedule.",
+          "Submit the lab report by Friday",
+          "Lab ran late again. Professor Alvarez hinted extensions are possible if we ask early."
+        ],
+        "answer": "The statistics midterm is due this week, and you need to submit the lab report by Friday.",
+        "claims": [
+          {
+            "claim": "The statistics midterm is due this week",
+            "supported": true
+          },
+          {
+            "claim": "You need to submit the lab report by Friday",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q27",
+        "slice": "distractor",
+        "question": "I called my grandmother",
+        "retrieved": [
+          "Call Grandma on Sunday",
+          "Long call with Grandma. She told the story about the orchard again. I didn't mind.",
+          "Call Mom back",
+          "I miss home. Mom called twice while I was in the lab and I couldn't pick up. I feel bad about it.",
+          "Nice evening for once. Walked home the long way, called my sister, felt almost normal."
+        ],
+        "answer": "Yes, you called your grandma on Sunday. She told a story about the orchard again.",
+        "claims": [
+          {
+            "claim": "You called your grandma.",
+            "supported": true
+          },
+          {
+            "claim": "She told a story about the orchard again.",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q29",
+        "slice": "distractor",
+        "question": "I spoke to the landlord",
+        "retrieved": [
+          "Call the landlord about the leaking tap",
+          "Landlord emailed about renewing the lease. Rent is going up again. This city is impossible.",
+          "Renew the apartment lease by the end of the month",
+          "Payday, finally. Paid rent, then stared at the electricity bill and closed the laptop.",
+          "I burned dinner so badly the smoke alarm went off. Ordered takeout and laughed about it with my roommate."
+        ],
+        "answer": "You called the landlord about the leaking tap. They emailed you later about renewing the lease, mentioning rent is going up again.",
+        "claims": [
+          {
+            "claim": "You called the landlord about the leaking tap.",
+            "supported": false
+          },
+          {
+            "claim": "They emailed you later about renewing the lease.",
+            "supported": true
+          },
+          {
+            "claim": "Rent is going up again.",
+            "supported": true
+          }
+        ],
+        "faithfulness": 0.667
+      },
+      {
+        "query_id": "q31",
+        "slice": "distractor",
+        "question": "sent the bill to the client",
+        "retrieved": [
+          "Send the invoice to the design client",
+          "Call the bank about the unrecognized charge",
+          "There's a charge on my bank statement I don't recognize. Forty-two dollars at a store I've never heard of.",
+          "Pay the electricity bill",
+          "Payday, finally. Paid rent, then stared at the electricity bill and closed the laptop."
+        ],
+        "answer": "You still need to send the invoice to the design client.",
+        "claims": [
+          {
+            "claim": "The bill needs to be sent",
+            "supported": true
+          },
+          {
+            "claim": "The invoice is what needs to be sent",
+            "supported": true
+          },
+          {
+            "claim": "The recipient of the invoice is the design client",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q33",
+        "slice": "distractor",
+        "question": "booked the dentist",
+        "retrieved": [
+          "Book a dentist appointment",
+          "Work was brutal today. Three back-to-back meetings and my manager moved the standup deck deadline to Monday. I barely had time to eat.",
+          "I burned dinner so badly the smoke alarm went off. Ordered takeout and laughed about it with my roommate.",
+          "Priya wants to do a cabin weekend next month. I said I'd check my schedule.",
+          "Ana texted me her wedding invite today. It's in June, in Lisbon of all places. I'm happy for her."
+        ],
+        "answer": "You did book a dentist appointment.",
+        "claims": [
+          {
+            "claim": "You did book",
+            "supported": false
+          },
+          {
+            "claim": "a dentist appointment",
+            "supported": true
+          }
+        ],
+        "faithfulness": 0.5
+      },
+      {
+        "query_id": "q35",
+        "slice": "distractor",
+        "question": "emailed my professor",
+        "retrieved": [
+          "Email Professor Alvarez about the extension",
+          "Library emailed: two books overdue. One of them I never even opened.",
+          "Landlord emailed about renewing the lease. Rent is going up again. This city is impossible.",
+          "Submit the lab report by Friday",
+          "Mail the birthday card to Dad"
+        ],
+        "answer": "You still need to email Professor Alvarez about the extension.",
+        "claims": [
+          {
+            "claim": "You still need to email Professor Alvarez",
+            "supported": true
+          },
+          {
+            "claim": "Professor Alvarez is someone who needs an email",
+            "supported": true
+          },
+          {
+            "claim": "An email about the extension is required",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q39",
+        "slice": "distractor",
+        "question": "packed my suitcase for the trip",
+        "retrieved": [
+          "Pack for the Denver flight on Thursday",
+          "Quiet night. Made pasta, watched half a movie, fell asleep on the couch.",
+          "Get a graduation gift for my roommate",
+          "Text Priya about the weekend cabin trip",
+          "Payday, finally. Paid rent, then stared at the electricity bill and closed the laptop."
+        ],
+        "answer": "You have an item on your to-do list to pack for the Denver flight on Thursday.",
+        "claims": [
+          {
+            "claim": "I have an item on my to-do list",
+            "supported": true
+          },
+          {
+            "claim": "The item is to pack something",
+            "supported": true
+          },
+          {
+            "claim": "The thing that needs to be packed is for a trip",
+            "supported": true
+          },
+          {
+            "claim": "The trip is to Denver",
+            "supported": true
+          },
+          {
+            "claim": "The flight is on Thursday",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q41",
+        "slice": "direct",
+        "question": "water the plants",
+        "retrieved": [
+          "Water the plants",
+          "Drop off the dry cleaning",
+          "Do the laundry",
+          "Take the recycling out",
+          "Pay the electricity bill"
+        ],
+        "answer": "You need to water the plants.",
+        "claims": [
+          {
+            "claim": "You need to water the plants.",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q45",
+        "slice": "direct",
+        "question": "update my resume",
+        "retrieved": [
+          "Update my resume",
+          "Back up my laptop",
+          "Call Mom back",
+          "Email Professor Alvarez about the extension",
+          "The interview went okay, I think. They asked about my capstone project and I rambled."
+        ],
+        "answer": "You still need to update your resume.",
+        "claims": [
+          {
+            "claim": "You still need to update your resume.",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q49",
+        "slice": "direct",
+        "question": "the night I burned dinner",
+        "retrieved": [
+          "I burned dinner so badly the smoke alarm went off. Ordered takeout and laughed about it with my roommate.",
+          "Quiet night. Made pasta, watched half a movie, fell asleep on the couch.",
+          "Nice evening for once. Walked home the long way, called my sister, felt almost normal.",
+          "Work was brutal today. Three back-to-back meetings and my manager moved the standup deck deadline to Monday. I barely had time to eat.",
+          "The tap in the kitchen is still dripping. The sound drove me crazy all night."
+        ],
+        "answer": "I remember that night well. You ordered takeout after burning dinner, and you even laughed about it with your roommate.",
+        "claims": [
+          {
+            "claim": "I remember that night well.",
+            "supported": true
+          },
+          {
+            "claim": "You ordered takeout after burning dinner",
+            "supported": true
+          },
+          {
+            "claim": "You even laughed about it with your roommate",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      },
+      {
+        "query_id": "q50",
+        "slice": "direct",
+        "question": "when my flight time changed",
+        "retrieved": [
+          "My flight to Denver on Thursday got moved to 6am. Who does that.",
+          "Pack for the Denver flight on Thursday",
+          "Priya wants to do a cabin weekend next month. I said I'd check my schedule.",
+          "I miss home. Mom called twice while I was in the lab and I couldn't pick up. I feel bad about it.",
+          "My bike has a flat so I took the metro, and of course my card was empty."
+        ],
+        "answer": "Your flight to Denver got moved to 6am on Thursday. Who does that.",
+        "claims": [
+          {
+            "claim": "Your flight to Denver got moved to 6am on Thursday.",
+            "supported": true
+          },
+          {
+            "claim": "Who does that.",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
+      }
+    ]
+  }
+}
