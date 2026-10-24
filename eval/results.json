@@ -75,10 +75,12 @@
     }
   },
   "rag_faithfulness": {
-    "judge_model": "llama3.1:latest",
+    "generator_model": "llama3.1:latest",
+    "judge_model": "claude-sonnet-5-5",
+    "answers_reused": true,
     "n_queries": 25,
-    "n_scored": 24,
-    "faithfulness": 0.924,
+    "n_scored": 25,
+    "faithfulness": 0.84,
     "transcripts": [
       {
         "query_id": "q1",
@@ -94,11 +96,11 @@
         "answer": "You couldn't pick up because you were in the lab. You feel bad about it.",
         "claims": [
           {
-            "claim": "You couldn't pick up because you were in the lab.",
+            "claim": "You couldn't pick up a call because you were in the lab.",
             "supported": true
           },
           {
-            "claim": "You feel bad about it.",
+            "claim": "You feel bad about not picking up the call.",
             "supported": true
           }
         ],
@@ -118,11 +120,11 @@
         "answer": "You already submitted the lab report by Friday, but you still need to turn in the lab writeup.",
         "claims": [
           {
-            "claim": "You already submitted the lab report by Friday",
+            "claim": "The user already submitted the lab report by Friday.",
             "supported": false
           },
           {
-            "claim": "you still need to turn in the lab writeup",
+            "claim": "The user still needs to turn in the lab writeup.",
             "supported": true
           }
         ],
@@ -142,15 +144,15 @@
         "answer": "You need to call the landlord about the leaking tap, and they've already emailed you about renewing the lease. The tap in the kitchen is still dripping, remember?",
         "claims": [
           {
-            "claim": "You need to call the landlord about the leaking tap",
+            "claim": "The user needs to call the landlord about the leaking tap.",
             "supported": true
           },
           {
-            "claim": "They've already emailed you about renewing the lease",
+            "claim": "The landlord has emailed the user about renewing the lease.",
             "supported": true
           },
           {
-            "claim": "The tap in the kitchen is still dripping",
+            "claim": "The tap in the kitchen is still dripping.",
             "supported": true
           }
         ],
@@ -170,11 +172,7 @@
         "answer": "Buy groceries for the week.",
         "claims": [
           {
-            "claim": "Buy groceries",
-            "supported": true
-          },
-          {
-            "claim": "for the week",
+            "claim": "The task is to buy groceries for the week.",
             "supported": true
           }
         ],
@@ -194,11 +192,11 @@
         "answer": "Pick up your prescription from the pharmacy.",
         "claims": [
           {
-            "claim": "Pick up your prescription",
+            "claim": "The answer instructs the person to pick up their prescription.",
             "supported": true
           },
           {
-            "claim": "Your prescription is located at the pharmacy",
+            "claim": "The answer states that the prescription should be picked up from the pharmacy.",
             "supported": true
           }
         ],
@@ -218,19 +216,19 @@
         "answer": "You still need to finish the slide deck for Monday's standup, remember? You mentioned it was moved to Monday and you barely had time to eat today.",
         "claims": [
           {
-            "claim": "You still need to finish the slide deck for Monday's standup",
+            "claim": "The user still needs to finish the slide deck for Monday's standup.",
             "supported": true
           },
           {
-            "claim": "You mentioned it was moved to Monday",
-            "supported": true
+            "claim": "The standup was moved to Monday.",
+            "supported": false
           },
           {
-            "claim": "You barely had time to eat today",
+            "claim": "The user barely had time to eat today.",
             "supported": true
           }
         ],
-        "faithfulness": 1.0
+        "faithfulness": 0.667
       },
       {
         "query_id": "q13",
@@ -246,15 +244,15 @@
         "answer": "You scheduled a haircut, remember?",
         "claims": [
           {
-            "claim": "You scheduled a haircut",
-            "supported": true
+            "claim": "The user previously scheduled a haircut.",
+            "supported": false
           },
           {
-            "claim": "You are supposed to go to the barber",
-            "supported": true
+            "claim": "The haircut was scheduled at the barber.",
+            "supported": false
           }
         ],
-        "faithfulness": 1.0
+        "faithfulness": 0.0
       },
       {
         "query_id": "q15",
@@ -270,19 +268,15 @@
         "answer": "You need to call the bank about an unrecognized charge on your statement. It's for forty-two dollars at a store you've never heard of.",
         "claims": [
           {
-            "claim": "You need to call the bank",
+            "claim": "You need to call the bank about an unrecognized charge on your statement.",
             "supported": true
           },
           {
-            "claim": "There is an unrecognized charge on your statement",
+            "claim": "The unrecognized charge is for forty-two dollars.",
             "supported": true
           },
           {
-            "claim": "The charge is for forty-two dollars",
-            "supported": true
-          },
-          {
-            "claim": "It was made at a store you have never heard of",
+            "claim": "The unrecognized charge is at a store you have never heard of.",
             "supported": true
           }
         ],
@@ -302,11 +296,11 @@
         "answer": "You wanted to cancel the streaming subscription you never use.",
         "claims": [
           {
-            "claim": "You wanted to cancel the streaming subscription",
+            "claim": "The user wanted to cancel a streaming subscription.",
             "supported": true
           },
           {
-            "claim": "You never use the streaming subscription",
+            "claim": "The user never uses the streaming subscription they wanted to cancel.",
             "supported": true
           }
         ],
@@ -324,8 +318,17 @@
           "Buy groceries for the week"
         ],
         "answer": "Check your schedule for Priya's cabin weekend next month.",
-        "claims": [],
-        "faithfulness": null
+        "claims": [
+          {
+            "claim": "The user should check their schedule for Priya's cabin weekend.",
+            "supported": true
+          },
+          {
+            "claim": "Priya's cabin weekend is next month.",
+            "supported": true
+          }
+        ],
+        "faithfulness": 1.0
       },
       {
         "query_id": "q20",
@@ -341,11 +344,7 @@
         "answer": "You're planning to clean the bathroom this weekend.",
         "claims": [
           {
-            "claim": "You are planning something for this weekend.",
-            "supported": true
-          },
-          {
-            "claim": "The activity you have planned is cleaning the bathroom.",
+            "claim": "The user is planning to clean the bathroom this weekend.",
             "supported": true
           }
         ],
@@ -365,15 +364,15 @@
         "answer": "You need to register for spring classes and renew your apartment lease by the end of the month.",
         "claims": [
           {
-            "claim": "You need to register for spring classes",
+            "claim": "The user needs to register for spring classes by the end of the month.",
             "supported": true
           },
           {
-            "claim": "You need to renew your apartment lease",
-            "supported": false
+            "claim": "The user needs to renew their apartment lease by the end of the month.",
+            "supported": true
           }
         ],
-        "faithfulness": 0.5
+        "faithfulness": 1.0
       },
       {
         "query_id": "q22",
@@ -389,11 +388,7 @@
         "answer": "The lab report is due by Friday.",
         "claims": [
           {
-            "claim": "The lab report is due.",
-            "supported": true
-          },
-          {
-            "claim": "It is due by Friday.",
+            "claim": "The lab report is due by Friday.",
             "supported": true
           }
         ],
@@ -417,11 +412,11 @@
             "supported": true
           },
           {
-            "claim": "Your flight to Denver was moved to 6am.",
+            "claim": "The flight to Denver on Thursday was moved to 6am.",
             "supported": true
           },
           {
-            "claim": "You need to pack for the flight.",
+            "claim": "You need to pack for the flight to Denver on Thursday.",
             "supported": true
           }
         ],
@@ -441,15 +436,15 @@
         "answer": "The statistics midterm is due this week, and you need to submit the lab report by Friday.",
         "claims": [
           {
-            "claim": "The statistics midterm is due this week",
-            "supported": true
+            "claim": "The statistics midterm is due this week.",
+            "supported": false
           },
           {
-            "claim": "You need to submit the lab report by Friday",
+            "claim": "The lab report needs to be submitted by Friday.",
             "supported": true
           }
         ],
-        "faithfulness": 1.0
+        "faithfulness": 0.5
       },
       {
         "query_id": "q27",
@@ -465,15 +460,19 @@
         "answer": "Yes, you called your grandma on Sunday. She told a story about the orchard again.",
         "claims": [
           {
-            "claim": "You called your grandma.",
+            "claim": "You called your grandmother on Sunday.",
+            "supported": false
+          },
+          {
+            "claim": "Your grandmother told a story about the orchard.",
             "supported": true
           },
           {
-            "claim": "She told a story about the orchard again.",
+            "claim": "Your grandmother has told a story about the orchard before.",
             "supported": true
           }
         ],
-        "faithfulness": 1.0
+        "faithfulness": 0.667
       },
       {
         "query_id": "q29",
@@ -489,15 +488,15 @@
         "answer": "You called the landlord about the leaking tap. They emailed you later about renewing the lease, mentioning rent is going up again.",
         "claims": [
           {
-            "claim": "You called the landlord about the leaking tap.",
+            "claim": "The user called the landlord about a leaking tap.",
             "supported": false
           },
           {
-            "claim": "They emailed you later about renewing the lease.",
+            "claim": "The landlord emailed the user later about renewing the lease.",
             "supported": true
           },
           {
-            "claim": "Rent is going up again.",
+            "claim": "The landlord's email mentioned that the rent is going up again.",
             "supported": true
           }
         ],
@@ -517,15 +516,11 @@
         "answer": "You still need to send the invoice to the design client.",
         "claims": [
           {
-            "claim": "The bill needs to be sent",
+            "claim": "The client is a design client.",
             "supported": true
           },
           {
-            "claim": "The invoice is what needs to be sent",
-            "supported": true
-          },
-          {
-            "claim": "The recipient of the invoice is the design client",
+            "claim": "The invoice still needs to be sent to the design client.",
             "supported": true
           }
         ],
@@ -545,15 +540,11 @@
         "answer": "You did book a dentist appointment.",
         "claims": [
           {
-            "claim": "You did book",
+            "claim": "The user booked a dentist appointment.",
             "supported": false
-          },
-          {
-            "claim": "a dentist appointment",
-            "supported": true
           }
         ],
-        "faithfulness": 0.5
+        "faithfulness": 0.0
       },
       {
         "query_id": "q35",
@@ -569,15 +560,11 @@
         "answer": "You still need to email Professor Alvarez about the extension.",
         "claims": [
           {
-            "claim": "You still need to email Professor Alvarez",
+            "claim": "The user needs to email Professor Alvarez.",
             "supported": true
           },
           {
-            "claim": "Professor Alvarez is someone who needs an email",
-            "supported": true
-          },
-          {
-            "claim": "An email about the extension is required",
+            "claim": "The email to Professor Alvarez is about an extension.",
             "supported": true
           }
         ],
@@ -597,23 +584,15 @@
         "answer": "You have an item on your to-do list to pack for the Denver flight on Thursday.",
         "claims": [
           {
-            "claim": "I have an item on my to-do list",
+            "claim": "The user has an item on their to-do list to pack for a flight.",
             "supported": true
           },
           {
-            "claim": "The item is to pack something",
+            "claim": "The flight is to Denver.",
             "supported": true
           },
           {
-            "claim": "The thing that needs to be packed is for a trip",
-            "supported": true
-          },
-          {
-            "claim": "The trip is to Denver",
-            "supported": true
-          },
-          {
-            "claim": "The flight is on Thursday",
+            "claim": "The flight is on Thursday.",
             "supported": true
           }
         ],
@@ -633,7 +612,7 @@
         "answer": "You need to water the plants.",
         "claims": [
           {
-            "claim": "You need to water the plants.",
+            "claim": "The plants need to be watered.",
             "supported": true
           }
         ],
@@ -673,15 +652,15 @@
         "answer": "I remember that night well. You ordered takeout after burning dinner, and you even laughed about it with your roommate.",
         "claims": [
           {
-            "claim": "I remember that night well.",
+            "claim": "The speaker remembers the night the user burned dinner.",
             "supported": true
           },
           {
-            "claim": "You ordered takeout after burning dinner",
+            "claim": "The user ordered takeout after burning dinner.",
             "supported": true
           },
           {
-            "claim": "You even laughed about it with your roommate",
+            "claim": "The user laughed about burning dinner with their roommate.",
             "supported": true
           }
         ],
@@ -702,10 +681,6 @@
         "claims": [
           {
             "claim": "Your flight to Denver got moved to 6am on Thursday.",
-            "supported": true
-          },
-          {
-            "claim": "Who does that.",
             "supported": true
           }
         ],

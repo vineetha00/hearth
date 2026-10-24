@@ -9,14 +9,24 @@ Two halves:
 
 2. Answer faithfulness, RAGAS-style, on 25 of the queries: generate an answer
    from the top-k retrieved memories with a local LLM (ollama), decompose the
-   answer into atomic claims with the same LLM, verify each claim against the
-   retrieved context, and score faithfulness = supported claims / total claims.
-   Direct ollama HTTP calls; no extra eval frameworks.
+   answer into atomic claims, verify each claim against the retrieved context,
+   and score faithfulness = supported claims / total claims.
+
+   The GENERATOR (the RAG system under test) and the JUDGE (decompose + verify)
+   are separate. The judge defaults to Claude Sonnet through the `claude` CLI:
+   on AgentAudit's 60-trace attribution benchmark the same llama3.1-8B that
+   generates answers scored kappa = 0.00 as a judge (it never flags anything),
+   while Sonnet scored kappa = 0.92 — a judge that always says "supported"
+   reports high faithfulness no matter how good the answers are, so the
+   faithfulness number is only as trustworthy as the judge behind it.
 
 Run (from the repo root, with the venv that has faiss + sentence-transformers):
 
     python -m eval.run_eval                 # retrieval only
-    python -m eval.run_eval --faithfulness  # retrieval + RAG faithfulness (needs ollama)
+    python -m eval.run_eval --faithfulness                    # judge: claude-cli (Sonnet)
+    python -m eval.run_eval --faithfulness --judge ollama     # judge: local llama3.1
+    python -m eval.run_eval --faithfulness --reuse-answers eval/results.json
+                                            # re-judge stored answers, same contexts
 
 Writes eval/results.json and prints a Markdown table.
 """
@@ -27,8 +37,10 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
 import httpx
 
@@ -81,7 +93,7 @@ def metrics(rankings: dict[str, list[str]], queries: list[dict]) -> dict:
     return {"overall": avg(rows), "slices": {s: avg(rs) for s, rs in sorted(per_slice.items())}}
 
 
-# --- faithfulness (RAGAS-style, judged by a local LLM over ollama) -----------
+# --- faithfulness (RAGAS-style; generator and judge are separate models) -----
 def ollama_chat(system: str, user: str, max_tokens: int = 400, json_mode: bool = False) -> str:
     payload = {
         "model": OLLAMA_MODEL,
@@ -94,6 +106,40 @@ def ollama_chat(system: str, user: str, max_tokens: int = 400, json_mode: bool =
     resp = httpx.post(f"{OLLAMA_URL}/api/chat", json=payload, timeout=300)
     resp.raise_for_status()
     return resp.json()["message"]["content"].strip()
+
+
+JUDGE_BACKEND = os.environ.get("HEARTH_EVAL_JUDGE", "claude-cli")
+JUDGE_MODEL = os.environ.get("HEARTH_EVAL_JUDGE_MODEL", "")
+
+
+def claude_cli_chat(system: str, user: str, model: str) -> str:
+    out = subprocess.run(
+        ["claude", "-p", f"{system}\n\n{user}", "--model", model],
+        capture_output=True,
+        text=True,
+        timeout=180,
+    )
+    if out.returncode != 0:
+        raise RuntimeError(f"claude CLI failed: {out.stderr[:200]}")
+    return out.stdout.strip()
+
+
+def judge_chat(system: str, user: str, max_tokens: int = 400, json_mode: bool = False) -> str:
+    """The judge's LLM call: Claude via the CLI by default, or the local ollama model."""
+    if JUDGE_BACKEND == "claude-cli":
+        return claude_cli_chat(system, user, JUDGE_MODEL or "claude-sonnet-5-5")
+    global OLLAMA_MODEL
+    prev, OLLAMA_MODEL = OLLAMA_MODEL, (JUDGE_MODEL or OLLAMA_MODEL)
+    try:
+        return ollama_chat(system, user, max_tokens=max_tokens, json_mode=json_mode)
+    finally:
+        OLLAMA_MODEL = prev
+
+
+def judge_name() -> str:
+    if JUDGE_BACKEND == "claude-cli":
+        return JUDGE_MODEL or "claude-sonnet-5-5"
+    return JUDGE_MODEL or OLLAMA_MODEL
 
 
 def generate_answer(question: str, context: list[str]) -> str:
@@ -116,7 +162,7 @@ def decompose_claims(question: str, answer: str) -> list[str]:
         "Ignore pure filler like greetings or 'I don't have that'. "
         'Reply with a JSON array of strings only, e.g. ["claim one", "claim two"]. No other text.'
     )
-    raw = ollama_chat(system, f"Question: {question}\nAnswer: {answer}")
+    raw = judge_chat(system, f"Question: {question}\nAnswer: {answer}")
     m = re.search(r"\[.*\]", raw, re.DOTALL)
     if not m:
         return []
@@ -136,34 +182,49 @@ def verify_claim(claim: str, context: list[str]) -> bool:
         'Reply with JSON only: {"evidence": "the memory that supports the claim, or null", "supported": true or false}.'
     )
     mem = "\n".join(f"- {t}" for t in context)
-    raw = ollama_chat(system, f"Memories:\n{mem}\n\nClaim: {claim}", max_tokens=150, json_mode=True)
+    raw = judge_chat(system, f"Memories:\n{mem}\n\nClaim: {claim}", max_tokens=150, json_mode=True)
+    m = re.search(r"\{.*\}", raw, re.DOTALL)
     try:
-        return bool(json.loads(raw).get("supported") is True)
-    except json.JSONDecodeError:
+        return bool(json.loads(m.group(0) if m else raw).get("supported") is True)
+    except (json.JSONDecodeError, AttributeError):
         return False
 
 
-def run_faithfulness(index: MemoryIndex, corpus: list[dict], queries: list[dict]) -> dict:
+def run_faithfulness(index: MemoryIndex, corpus: list[dict], queries: list[dict],
+                     reuse: dict[str, dict] | None = None) -> dict:
+    """reuse: query_id -> stored transcript; re-judges those exact answers and
+    retrieved contexts instead of regenerating, so two judges score the same answers."""
     by_id = {q["id"]: q for q in queries}
     picked = [by_id[qid] for qid in FAITHFULNESS_QUERY_IDS]
-    transcripts, scores = [], []
-    for i, q in enumerate(picked, 1):
-        context = [text for _, _, text in index.search(q["query"], k=TOP_K)]
-        answer = generate_answer(q["query"], context)
+
+    def judge_one(q: dict) -> dict:
+        if reuse and q["id"] in reuse:
+            context = reuse[q["id"]]["retrieved"]
+            answer = reuse[q["id"]]["answer"]
+        else:
+            context = [text for _, _, text in index.search(q["query"], k=TOP_K)]
+            answer = generate_answer(q["query"], context)
         claims = decompose_claims(q["query"], answer)
         verdicts = [{"claim": c, "supported": verify_claim(c, context)} for c in claims]
-        supported = sum(v["supported"] for v in verdicts)
-        score = supported / len(verdicts) if verdicts else None
-        if score is not None:
-            scores.append(score)
-        transcripts.append({
+        score = sum(v["supported"] for v in verdicts) / len(verdicts) if verdicts else None
+        return {
             "query_id": q["id"], "slice": q["slice"], "question": q["query"],
             "retrieved": context, "answer": answer, "claims": verdicts,
             "faithfulness": None if score is None else round(score, 3),
-        })
-        print(f"  [{i:2}/{len(picked)}] {q['id']:<4} faithfulness={'n/a' if score is None else f'{score:.2f}'}  ({q['query'][:50]})")
+        }
+
+    workers = 5 if JUDGE_BACKEND == "claude-cli" else 1
+    transcripts = []
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        for i, t in enumerate(pool.map(judge_one, picked), 1):
+            transcripts.append(t)
+            s = t["faithfulness"]
+            print(f"  [{i:2}/{len(picked)}] {t['query_id']:<4} faithfulness={'n/a' if s is None else f'{s:.2f}'}  ({t['question'][:50]})")
+    scores = [t["faithfulness"] for t in transcripts if t["faithfulness"] is not None]
     return {
-        "judge_model": OLLAMA_MODEL,
+        "generator_model": OLLAMA_MODEL,
+        "judge_model": judge_name(),
+        "answers_reused": bool(reuse),
         "n_queries": len(picked),
         "n_scored": len(scores),
         "faithfulness": round(sum(scores) / len(scores), 3) if scores else None,
@@ -186,9 +247,24 @@ def markdown_table(lex: dict, sem: dict) -> str:
 
 
 def main() -> None:
+    global JUDGE_BACKEND, JUDGE_MODEL
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--faithfulness", action="store_true", help="also run the ollama RAG faithfulness eval")
+    ap.add_argument("--faithfulness", action="store_true", help="also run the RAG faithfulness eval")
+    ap.add_argument("--judge", choices=["claude-cli", "ollama"], default=JUDGE_BACKEND,
+                    help="faithfulness judge backend (default claude-cli: Claude Sonnet)")
+    ap.add_argument("--judge-model", default=JUDGE_MODEL,
+                    help="judge model (default claude-sonnet-5-5 for claude-cli, the generator model for ollama)")
+    ap.add_argument("--reuse-answers", default=None, metavar="RESULTS_JSON",
+                    help="re-judge the answers and contexts stored in a previous eval/results.json")
     args = ap.parse_args()
+    JUDGE_BACKEND, JUDGE_MODEL = args.judge, args.judge_model
+
+    reuse = None
+    if args.reuse_answers:
+        prev = json.load(open(args.reuse_answers))
+        reuse = {t["query_id"]: t for t in prev.get("rag_faithfulness", {}).get("transcripts", [])}
+        if not reuse:
+            raise SystemExit(f"no transcripts found in {args.reuse_answers}")
 
     corpus, queries = load()
     print(f"Corpus: {len(corpus)} memories; queries: {len(queries)}")
@@ -204,8 +280,9 @@ def main() -> None:
                "retrieval": {"lexical": lex, "semantic": sem}}
 
     if args.faithfulness:
-        print(f"Faithfulness eval over ollama ({OLLAMA_MODEL})...")
-        results["rag_faithfulness"] = run_faithfulness(index, corpus, queries)
+        print(f"Faithfulness eval: generator={OLLAMA_MODEL}, judge={judge_name()}"
+              f"{' (re-judging stored answers)' if reuse else ''}...")
+        results["rag_faithfulness"] = run_faithfulness(index, corpus, queries, reuse=reuse)
 
     out = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results.json")
     with open(out, "w") as f:

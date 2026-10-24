@@ -116,22 +116,27 @@ keeps an edge is temporal recall@5 (0.875 vs 0.812) — "what's due on friday" m
 "friday", which embeddings treat as near its weekday siblings; Hearth's real date questions go through
 `get_commitments(timeframe)`, which resolves dates in code, so this costs nothing in the product.
 
-Answer faithfulness is scored RAGAS-style with a local judge (ollama, `llama3.1:latest`, temperature 0):
-generate an answer from the top-5 retrieved memories, decompose it into atomic claims, verify each claim
-against the retrieved context only, faithfulness = supported / total. **Measured: 0.924** over 24 of 25
-generated answers (one answer contained no checkable claims). The misses are real hallucinations worth
-knowing about: statement-form queries ("booked the dentist") tempt the generator to assert the thing was
-*done* when the memory only says it was *planned*, and the judge marks that unsupported. Caveats: an 8B
-judge is imperfect — spot-checks show it occasionally passes a fragment claim and can miss the
-planned-vs-done distinction — so read the number as a solid estimate, not a measurement to three digits.
-Full transcripts (retrieved memories, answers, per-claim verdicts) are in `eval/results.json`.
+Answer faithfulness is scored RAGAS-style: generate an answer from the top-5 retrieved memories with the
+local generator (ollama `llama3.1:latest`, temperature 0), decompose it into atomic claims, verify each
+claim against the retrieved context only, faithfulness = supported / total. The judge is deliberately a
+*different, stronger* model than the generator — Claude Sonnet — because a judge that rubber-stamps
+everything reports high faithfulness no matter how good the answers are. (On AgentAudit's 60-trace
+attribution benchmark, llama3.1-8B as a judge scored Cohen's κ = 0.00 — it never flags anything — vs
+κ = 0.92 for Sonnet; judged by llama3.1, this same eval read 0.924.)
+
+**Measured: 0.84** over all 25 generated answers (judge `claude-sonnet-5-5`, same stored answers and
+contexts re-judged). The misses are real hallucinations worth knowing about: statement-form queries
+("booked the dentist") tempt the 8B generator to assert the thing was *done* when the memory only says it
+was *planned*, and the judge marks that unsupported. Full transcripts (retrieved memories, answers,
+per-claim verdicts) are in `eval/results.json`.
 
 Reproduce:
 
 ```bash
 pip install -r requirements-semantic.txt   # faiss-cpu + sentence-transformers (~90MB model on first use)
 python -m eval.run_eval                    # retrieval metrics only
-python -m eval.run_eval --faithfulness     # + RAG faithfulness (needs ollama with llama3.1)
+python -m eval.run_eval --faithfulness     # + RAG faithfulness (generator: ollama llama3.1;
+                                           #   judge: claude CLI Sonnet — or --judge ollama)
 ```
 
 ## Putting it in front of real Alexa+
