@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from . import dates, llm
+from .retrieval import MemoryIndex
 from .store import Store
 
 
@@ -41,9 +42,32 @@ def _public(c: dict, today_: date) -> dict:
 
 
 class Hearth:
-    def __init__(self, store: Store | None = None, brain: llm.Brain | None = None):
+    def __init__(self, store: Store | None = None, brain: llm.Brain | None = None, index: MemoryIndex | None = None):
         self.store = store or Store()
         self.brain = brain or llm.Brain()
+        # Embeddings live in a sidecar next to the SQLite file; an in-memory store gets an in-memory index.
+        sidecar = None if self.store.path == ":memory:" else self.store.path + ".index.npz"
+        self.index = index if index is not None else MemoryIndex(sidecar)
+
+    def _remember(self, entry_id: int | None, text: str, commitments: list[dict]) -> None:
+        """Mirror new memories into the semantic index (a no-op when embeddings are unavailable)."""
+        items = [(f"commitment:{c['id']}", c["text"]) for c in commitments]
+        if entry_id is not None:
+            items.insert(0, (f"entry:{entry_id}", text))
+        self.index.add_many(items)
+
+    def _semantic_match(self, user_id: str, query: str, floor: float = 0.45) -> dict | None:
+        """A confident embedding match among open commitments, or None to stay lexical."""
+        open_items = {f"commitment:{c['id']}": c for c in self.store.list_commitments(user_id, "open")}
+        if not open_items or not query.strip():
+            return None
+        self.index.add_many([(k, c["text"]) for k, c in open_items.items()])  # items may predate the index
+        hits = self.index.search(query, k=2, allowed_keys=set(open_items))
+        if not hits or hits[0][0] < floor:
+            return None
+        if len(hits) > 1 and (hits[0][0] - hits[1][0]) < 0.15 and hits[0][0] < 0.75:
+            return None  # two plausible readings: let the clarification flow ask
+        return open_items[hits[0][1]]
 
     # ------------------------------------------------------------------ diary
     def log_journal_entry(self, text: str, user_id: str = "me") -> dict:
@@ -64,6 +88,7 @@ class Hearth:
             )
             (new_items if created else existing_items).append(row)
         dated = [r for r in existing_items if r.pop("date_added", False)]
+        self._remember(entry_id, text, new_items)
 
         speech = analysis.acknowledgement
         if new_items:
@@ -83,15 +108,25 @@ class Hearth:
             "engine": analysis.engine,
         }
 
-    def get_reflection(self, days: int = 7, user_id: str = "me") -> dict:
+    def get_reflection(self, days: int = 7, user_id: str = "me", focus: str | None = None) -> dict:
         days = max(1, min(60, int(days)))
         now = dates.now()
         since = (now - timedelta(days=days)).isoformat()
         entries = self.store.recent_entries(user_id, since)
+        if focus and entries:
+            # "How have I been about work?" -> reflect over the semantically relevant evenings only.
+            self.index.add_many([(f"entry:{e['id']}", e["text"]) for e in entries])
+            hits = self.index.search(focus, k=len(entries), allowed_keys={f"entry:{e['id']}" for e in entries})
+            keep = {int(key.split(":", 1)[1]) for score, key, _ in hits if score >= 0.25}
+            if keep:
+                entries = [e for e in entries if e["id"] in keep]
         done = self.store.completed_since(user_id, since)
         open_items = self.store.list_commitments(user_id, "open")
         speech, engine = self.brain.reflect(entries, done, open_items, days, now.date())
-        return {"speech": speech, "entries_considered": len(entries), "completed": done, "open": len(open_items), "engine": engine}
+        out = {"speech": speech, "entries_considered": len(entries), "completed": done, "open": len(open_items), "engine": engine}
+        if focus:
+            out["focus"] = focus
+        return out
 
     # ------------------------------------------------------------ commitments
     def get_commitments(self, timeframe: str = "all", user_id: str = "me") -> dict:
@@ -153,6 +188,8 @@ class Hearth:
             user_id, clean[0].upper() + clean[1:], due_date.isoformat() if due_date else None, importance,
             pm.group(1) if pm else None, None, dates.now().isoformat(),
         )
+        if created:
+            self._remember(None, text, [row])
         when = dates.describe(due_date, today_) if due_date else None
         speech = f"Added: {row['text']}" + (f", {when}" if when else "") + "." if created else f"That's already on your list: {row['text']}."
         return {"speech": speech, "added": created, "commitment": _public(row, today_)}
@@ -166,10 +203,19 @@ class Hearth:
                 return {"speech": f"Done. I crossed off: {c['text']}.", "completed": True, "commitment": _public({**c, "status": "done"}, today_)}
             return {"speech": "I couldn't find that item on your open list.", "completed": False}
         matches = self.store.find_open_matches(user_id, description or "")
-        if not matches:
+        if matches:
+            best_score, best = matches[0]
+            ambiguous = len(matches) > 1 and (best_score - matches[1][0]) < 0.12 and best_score < 0.9
+        else:
+            best, ambiguous = None, False
+        if best is None or ambiguous:
+            # Lexical matching came up empty or torn; try matching by meaning ("I rang my mother" -> "Call Mom back").
+            # A vague phrase that tore the lexical matcher ("called someone") needs real confidence to skip the question.
+            rescued = self._semantic_match(user_id, description or "", floor=0.6 if ambiguous else 0.45)
+            if rescued is not None:
+                best, ambiguous = rescued, False
+        if best is None:
             return {"speech": "I couldn't find that on your list. Say 'what's on my list' to hear what I have.", "completed": False}
-        best_score, best = matches[0]
-        ambiguous = len(matches) > 1 and (best_score - matches[1][0]) < 0.12 and best_score < 0.9
         if ambiguous:
             options = " or ".join(c["text"] for _, c in matches[:3])
             return {

@@ -60,6 +60,7 @@ def similarity(a: str, b: str) -> float:
 class Store:
     def __init__(self, path: str | None = None):
         path = path or os.environ.get("HEARTH_DB", "data/hearth.db")
+        self.path = path
         if path != ":memory:":
             os.makedirs(os.path.dirname(os.path.abspath(path)), exist_ok=True)
         self._conn = sqlite3.connect(path, check_same_thread=False)

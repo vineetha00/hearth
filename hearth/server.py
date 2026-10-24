@@ -87,11 +87,15 @@ def add_commitment(
 @mcp.tool()
 def get_reflection(
     days: Annotated[int, Field(description="How many days back to look (1-60).", ge=1, le=60)] = 7,
+    focus: Annotated[
+        str | None,
+        Field(description="Optional topic to reflect on, e.g. 'work' or 'my family' ('How have I been about work?'). Picks the relevant evenings by meaning."),
+    ] = None,
     user_id: UserId = "me",
 ) -> dict[str, Any]:
     """Notice patterns across recent entries (recurring topics, heavy vs. good evenings, tasks piling up).
     Observations only, never advice."""
-    return app_logic.get_reflection(days, user_id)
+    return app_logic.get_reflection(days, user_id, focus)
 
 
 @mcp.custom_route("/health", methods=["GET"])

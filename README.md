@@ -79,6 +79,66 @@ and overdue items have something real to show.
 reflection, the Bedrock path (with a fake client), fallback on Bedrock failure, and an end-to-end run that boots the
 server and drives it with an MCP client over Streamable HTTP, asserting protocol >= 2025-11-25.
 
+## Semantic memory (FAISS) and RAG evaluation
+
+Hearth's matching and recall were purely lexical (token overlap + `SequenceMatcher`). There is now an
+embedding-backed semantic memory on top of it:
+
+```
+ journal entries + commitments ──▶ all-MiniLM-L6-v2 embeddings ──▶ FAISS IndexFlatIP (cosine)
+                                                                       │  sidecar: <db>.index.npz
+          complete_commitment / get_reflection(focus=…) ──search──────┘  lexical matcher = fallback
+```
+
+| Piece | File | Role |
+|---|---|---|
+| Vector store | `hearth/retrieval.py` | `MemoryIndex`: sentence-transformer embeddings (lazy model load, cached per process), FAISS `IndexFlatIP` over L2-normalised vectors, persisted next to the SQLite file. Degrades in order: no FAISS → numpy matmul; no sentence-transformers → the lexical matcher carries on alone, so nothing new is ever required. |
+| Wiring | `hearth/service.py` | `complete_commitment` rescues paraphrases the lexical matcher misses ("I rang my mother" → "Call Mom back") and only overrides an ambiguous lexical result when the embedding match is confident; `get_reflection(focus="work")` picks the relevant evenings by meaning. |
+| Eval | `eval/` | A fixed synthetic diary (60 memories, 50 annotated queries across paraphrase / temporal / distractor / direct slices) plus a runner that scores retrieval and RAGAS-style answer faithfulness. Results in `eval/results.json`. |
+
+Measured on the eval set (recall@k averaged over gold items, k=5):
+
+| Matcher | Slice | n | recall@1 | recall@5 | MRR |
+|---|---|---|---|---|---|
+| **lexical (baseline)** | overall | 50 | 0.600 | 0.800 | 0.704 |
+| lexical | paraphrase | 18 | 0.333 | 0.556 | 0.438 |
+| lexical | temporal | 8 | 0.375 | 0.875 | 0.667 |
+| lexical | distractor | 14 | 0.857 | 1.000 | 0.917 |
+| lexical | direct | 10 | 0.900 | 0.900 | 0.912 |
+| **semantic (FAISS + MiniLM)** | overall | 50 | 0.910 | 0.970 | 0.958 |
+| semantic | paraphrase | 18 | 0.944 | 1.000 | 0.963 |
+| semantic | temporal | 8 | 0.562 | 0.812 | 0.818 |
+| semantic | distractor | 14 | 1.000 | 1.000 | 1.000 |
+| semantic | direct | 10 | 1.000 | 1.000 | 1.000 |
+
+The paraphrase slice is the point: semantic recall@5 1.000 vs 0.556 lexical. The one slice where lexical
+keeps an edge is temporal recall@5 (0.875 vs 0.812) — "what's due on friday" matches the literal token
+"friday", which embeddings treat as near its weekday siblings; Hearth's real date questions go through
+`get_commitments(timeframe)`, which resolves dates in code, so this costs nothing in the product.
+
+Answer faithfulness is scored RAGAS-style: generate an answer from the top-5 retrieved memories with the
+local generator (ollama `llama3.1:latest`, temperature 0), decompose it into atomic claims, verify each
+claim against the retrieved context only, faithfulness = supported / total. The judge is deliberately a
+*different, stronger* model than the generator — Claude Sonnet — because a judge that rubber-stamps
+everything reports high faithfulness no matter how good the answers are. (On AgentAudit's 60-trace
+attribution benchmark, llama3.1-8B as a judge scored Cohen's κ = 0.00 — it never flags anything — vs
+κ = 0.92 for Sonnet; judged by llama3.1, this same eval read 0.924.)
+
+**Measured: 0.84** over all 25 generated answers (judge `claude-sonnet-5-5`, same stored answers and
+contexts re-judged). The misses are real hallucinations worth knowing about: statement-form queries
+("booked the dentist") tempt the 8B generator to assert the thing was *done* when the memory only says it
+was *planned*, and the judge marks that unsupported. Full transcripts (retrieved memories, answers,
+per-claim verdicts) are in `eval/results.json`.
+
+Reproduce:
+
+```bash
+pip install -r requirements-semantic.txt   # faiss-cpu + sentence-transformers (~90MB model on first use)
+python -m eval.run_eval                    # retrieval metrics only
+python -m eval.run_eval --faithfulness     # + RAG faithfulness (generator: ollama llama3.1;
+                                           #   judge: claude CLI Sonnet — or --judge ollama)
+```
+
 ## Putting it in front of real Alexa+
 
 The server is a spec-compliant Streamable HTTP MCP endpoint, so it is what Alexa+ needs to connect to. Registering it
@@ -99,10 +159,11 @@ Bind with `HEARTH_HOST=0.0.0.0` (the default localhost binding rejects other `Ho
 ## Layout
 
 ```
-hearth/       MCP server, service logic, Bedrock + fallback language layer, SQLite store
+hearth/       MCP server, service logic, Bedrock + fallback language layer, SQLite store, semantic memory index
 simulator/    Alexa+ simulator (Starlette backend, single-file UI)
 scripts/      seed_demo.py, check_bedrock.py (verify AWS access), start.sh (run everything)
 tests/        unit + end-to-end tests
+eval/         retrieval + RAG faithfulness eval (dataset, runner, results)
 ```
 
 MIT licensed.
